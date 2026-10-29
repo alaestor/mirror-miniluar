@@ -3,7 +3,6 @@ This list is a stack. Items are taken from the top and deleted upon completion.
 TODO
 ---
 
-- Implement stdin and single-file CLI modes, explicit output, default sibling output, and overwrite protection. Test through the executable, including errors and stream separation.
 - Add deterministic directory/batch discovery, recursive mode, output directories, and collision preflight. Reject destinations that alias other inputs, including filesystem aliases. Decide whether shell-expanded globs suffice rather than adding a glob dependency.
 - Add comment/whitespace preservation and newline options with regression tests from ../fork-MiniLua/tests. Preserve line-comment terminators when whitespace is removed.
 - Add literal shortening only where Lua 5.1–5.4 and Luau agree. Check runtime bytes, float/integer distinctions, overflow, negative zero, and dialect-sensitive escapes against interpreters.
