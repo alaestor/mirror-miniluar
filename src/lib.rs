@@ -3,6 +3,7 @@
 mod assemble;
 mod lexer;
 mod literals;
+mod rename;
 
 use std::fmt;
 
@@ -22,15 +23,17 @@ impl fmt::Display for Error {
 impl std::error::Error for Error {}
 
 #[derive(Debug, Clone, Copy)]
-pub struct Options {
+pub struct Options<'a> {
     pub remove_comments: bool,
     pub remove_whitespace: bool,
     pub keep_newlines: bool,
     pub minify_strings: bool,
     pub minify_numbers: bool,
+    pub rename_locals: bool,
+    pub preserve_names: &'a [&'a str],
 }
 
-impl Default for Options {
+impl Default for Options<'_> {
     fn default() -> Self {
         Self {
             remove_comments: true,
@@ -38,6 +41,8 @@ impl Default for Options {
             keep_newlines: false,
             minify_strings: true,
             minify_numbers: true,
+            rename_locals: false,
+            preserve_names: &[],
         }
     }
 }
@@ -46,6 +51,9 @@ impl Default for Options {
 /// copied exactly; `keep_newlines` does not infer statement boundaries.
 pub fn minify_with_options(source: &[u8], options: Options) -> Result<Vec<u8>, Error> {
     let mut tokens = lexer::lex(source)?;
+    if options.rename_locals {
+        rename::rename(&mut tokens, source.len(), options.preserve_names)?;
+    }
     literals::shorten(&mut tokens, options);
     Ok(assemble::assemble(&tokens, source.len(), options))
 }

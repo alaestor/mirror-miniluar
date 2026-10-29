@@ -24,6 +24,10 @@ The minifier handles bytes, not UTF-8 text. Literal transformations need runtime
 tests for every supported dialect. Use `--no-strings --no-numbers` when exact
 literal spelling matters. Lexical errors fail before output is written; a
 successful minification is not syntax validation.
+Local renaming is opt-in (`--rename-locals`). Its binding parser supports untyped
+Lua/Luau; types, casts, if-expressions, and backtick strings fail before output.
+Names inspected through debugging or dynamically loaded code cannot be inferred;
+leave renaming disabled, or use the library's `preserve_names` option.
 The crate forbids unsafe code and has no third-party Rust dependencies.
 
 Take the first item in `.agents/TODO.md` and delete it when finished. The Python

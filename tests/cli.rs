@@ -67,7 +67,7 @@ fn invalid_arguments_fail_without_consuming_or_writing_source() {
         vec!["--unknown"],
         vec!["-o"],
         vec!["--stdout", "-o", "out.lua"],
-        vec!["one.lua", "two.lua"],
+        vec!["-", "one.lua"],
     ] {
         let result = dir.run(&args, b"");
         assert!(!result.status.success(), "{args:?}");
@@ -137,4 +137,24 @@ fn preservation_flags_are_applied_in_both_stdin_and_file_modes() {
         success(&result);
         assert_eq!(result.stdout, b"\r\nprint(1)\r\n\r\n");
     }
+}
+
+#[test]
+fn renaming_is_opt_in_and_parse_failure_never_replaces_an_existing_output() {
+    let dir = Sandbox::new();
+    let source = b"local longVariableName=3;print(longVariableName)";
+    let result = dir.run(&["--rename-locals"], source);
+    success(&result);
+    assert!(!result.stdout.windows(16).any(|w| w == b"longVariableName"));
+    assert!(result.stdout.len() < source.len());
+    fs::write(dir.path("out.lua"), b"precious").unwrap();
+    let invalid = b"local longVariableName=3; local typed: number=longVariableName";
+    let result = dir.run(&["--rename-locals", "-o", "out.lua", "-f"], invalid);
+    assert!(!result.status.success());
+    assert!(result.stdout.is_empty());
+    assert!(String::from_utf8_lossy(&result.stderr).contains("renaming"));
+    assert_eq!(fs::read(dir.path("out.lua")).unwrap(), b"precious");
+    let result = dir.run(&["--rename-locals"], invalid);
+    assert!(!result.status.success());
+    assert!(result.stdout.is_empty());
 }

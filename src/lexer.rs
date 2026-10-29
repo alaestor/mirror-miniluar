@@ -16,6 +16,7 @@ pub(crate) enum Kind {
 
 #[derive(Clone, Debug)]
 pub(crate) struct Token<'a> {
+    pub offset: usize,
     pub kind: Kind,
     pub text: Cow<'a, [u8]>,
 }
@@ -115,6 +116,7 @@ impl<'a> Lexer<'a> {
             Kind::Operator
         };
         Ok(Token {
+            offset: start,
             kind,
             text: Cow::Borrowed(&self.source[start..self.pos]),
         })

@@ -22,6 +22,7 @@ Options:
       --keep-newlines    Keep newline bytes while removing spaces
       --no-strings       Keep string literal spelling
       --no-numbers       Keep number literal spelling
+  -R, --rename-locals    Shorten locals; reject unsupported binding syntax
       --no-banner        Accepted for compatibility; no banner is printed
   -h, --help             Print help
   -v, --version          Print version
@@ -29,7 +30,7 @@ Options:
 ";
 
 pub struct Config {
-    pub minify: miniluar::Options,
+    pub minify: miniluar::Options<'static>,
     pub inputs: Vec<PathBuf>,
     pub output: Option<PathBuf>,
     pub output_dir: Option<PathBuf>,
@@ -88,6 +89,7 @@ pub fn parse(args: impl Iterator<Item = OsString>) -> Result<Action, String> {
             Some("--keep-newlines") => config.minify.keep_newlines = true,
             Some("--no-strings") => config.minify.minify_strings = false,
             Some("--no-numbers") => config.minify.minify_numbers = false,
+            Some("-R" | "--rename-locals") => config.minify.rename_locals = true,
             Some("-o" | "--output" | "-d" | "--output-dir" | "--suffix") => {
                 let value = args
                     .next()
