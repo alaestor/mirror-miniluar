@@ -9,8 +9,9 @@ cargo fmt --check
 cargo clippy --all-targets -- -D warnings
 ```
 
-Execution tests require Lua 5.4, supplied by the shell. They fail rather than skip
-when Lua is absent. Luau interpolation currently has lexical tests only.
+Execution tests require Lua 5.1–5.4 and Luau. The shell supplies interpreter paths
+through `LUA51`, `LUA52`, `LUA53`, `LUA54`, and `LUAU`. Missing runtimes fail tests
+rather than silently skipping them.
 
 `nix build` builds the CLI and runs tests. `nix run . -- --help` lists implemented
 options. For a quick smoke test:
