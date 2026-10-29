@@ -1,5 +1,6 @@
 use std::ffi::OsString;
 use std::fs;
+use std::io::Read;
 use std::path::PathBuf;
 use std::process::{Command, Output, Stdio};
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -29,6 +30,12 @@ impl Drop for Program {
     }
 }
 
+fn read_all(mut pipe: impl Read) -> Vec<u8> {
+    let mut bytes = Vec::new();
+    pipe.read_to_end(&mut bytes).unwrap();
+    bytes
+}
+
 impl Runtime {
     pub fn execute(&self, source: &[u8]) -> Output {
         static NEXT: AtomicUsize = AtomicUsize::new(0);
@@ -49,15 +56,33 @@ impl Runtime {
             .spawn()
             .unwrap_or_else(|e| panic!("{}: {e}", self.name));
         let deadline = Instant::now() + Duration::from_secs(5);
-        while child.try_wait().unwrap().is_none() {
-            if Instant::now() >= deadline {
-                child.kill().unwrap();
-                let output = child.wait_with_output().unwrap();
-                panic!("{} timed out: {:?}", self.name, output);
-            }
-            std::thread::sleep(Duration::from_millis(2));
-        }
-        child.wait_with_output().unwrap()
+        let stdout = child.stdout.take().unwrap();
+        let stderr = child.stderr.take().unwrap();
+        std::thread::scope(|scope| {
+            // Drain both pipes while waiting. Waiting first can block a healthy
+            // interpreter in write() once either pipe fills.
+            let stdout = scope.spawn(move || read_all(stdout));
+            let stderr = scope.spawn(move || read_all(stderr));
+            let mut timed_out = false;
+            let status = loop {
+                if let Some(status) = child.try_wait().unwrap() {
+                    break status;
+                }
+                if Instant::now() >= deadline {
+                    timed_out = true;
+                    child.kill().unwrap();
+                    break child.wait().unwrap();
+                }
+                std::thread::sleep(Duration::from_millis(2));
+            };
+            let output = Output {
+                status,
+                stdout: stdout.join().unwrap(),
+                stderr: stderr.join().unwrap(),
+            };
+            assert!(!timed_out, "{} timed out: {:?}", self.name, output);
+            output
+        })
     }
 
     pub fn stdout(&self, source: &[u8]) -> Vec<u8> {
