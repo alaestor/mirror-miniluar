@@ -4,25 +4,6 @@ use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 
-pub fn same_file(input: &Path, output: &Path) -> io::Result<bool> {
-    let output_meta = match fs::metadata(output) {
-        Ok(meta) => meta,
-        Err(e) if e.kind() == io::ErrorKind::NotFound => return Ok(false),
-        Err(e) => return Err(e),
-    };
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::MetadataExt;
-        let input_meta = fs::metadata(input)?;
-        Ok(input_meta.dev() == output_meta.dev() && input_meta.ino() == output_meta.ino())
-    }
-    #[cfg(not(unix))]
-    {
-        let _ = output_meta;
-        Ok(fs::canonicalize(input)? == fs::canonicalize(output)?)
-    }
-}
-
 struct Temporary(PathBuf);
 
 impl Drop for Temporary {
@@ -58,6 +39,13 @@ pub fn write(path: &Path, bytes: &[u8], overwrite: bool) -> io::Result<()> {
             ))
         })?;
     file.write_all(bytes)?;
+    if overwrite {
+        match fs::metadata(path) {
+            Ok(metadata) => file.set_permissions(metadata.permissions())?,
+            Err(e) if e.kind() == io::ErrorKind::NotFound => {}
+            Err(e) => return Err(e),
+        }
+    }
     // Surface delayed write failures before publishing. This is not a guarantee
     // of crash durability, which would also require syncing the parent directory.
     file.sync_all()?;
