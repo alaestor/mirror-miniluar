@@ -8,7 +8,8 @@ pub(crate) enum Kind {
     Literal,
     Operator,
     Space,
-    Comment,
+    LineComment,
+    LongComment,
     Shebang,
 }
 
@@ -80,10 +81,11 @@ impl<'a> Lexer<'a> {
             self.pos += 2;
             if let Some(level) = self.bracket_level() {
                 self.long_bracket(level)?;
+                Kind::LongComment
             } else {
                 self.consume_while(|b| !matches!(b, b'\r' | b'\n'));
+                Kind::LineComment
             }
-            Kind::Comment
         } else if let Some(level) = self.bracket_level() {
             self.long_bracket(level)?;
             Kind::Literal

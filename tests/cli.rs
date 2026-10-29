@@ -120,3 +120,21 @@ fn help_and_version_do_not_require_source() {
     success(&version);
     assert_eq!(version.stdout, b"minilua 0.1.0\n");
 }
+
+#[test]
+fn preservation_flags_are_applied_in_both_stdin_and_file_modes() {
+    let dir = Sandbox::new();
+    let source = b"-- heading\r\nprint ( 1 )\r\n\r\n";
+    fs::write(dir.path("input.lua"), source).unwrap();
+    for input in ["-", "input.lua"] {
+        let result = dir.run(
+            &[input, "--stdout", "--no-comments", "--no-whitespace"],
+            source,
+        );
+        success(&result);
+        assert_eq!(result.stdout, source);
+        let result = dir.run(&[input, "--stdout", "--keep-newlines"], source);
+        success(&result);
+        assert_eq!(result.stdout, b"\r\nprint(1)\r\n\r\n");
+    }
+}

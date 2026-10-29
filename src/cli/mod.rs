@@ -46,7 +46,7 @@ fn stdin(config: &Config) -> Result<()> {
     }
     let mut source = Vec::new();
     io::stdin().read_to_end(&mut source)?;
-    let minified = miniluar::minify(&source)?;
+    let minified = miniluar::minify_with_options(&source, config.minify)?;
     publish(
         &source,
         &minified,
@@ -58,7 +58,7 @@ fn stdin(config: &Config) -> Result<()> {
 
 fn file(job: &plan::Job, config: &Config) -> Result<()> {
     let source = fs::read(&job.input).map_err(|e| format!("cannot read: {e}"))?;
-    let minified = miniluar::minify(&source)?;
+    let minified = miniluar::minify_with_options(&source, config.minify)?;
     publish(
         &source,
         &minified,

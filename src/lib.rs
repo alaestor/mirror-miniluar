@@ -1,10 +1,9 @@
 #![forbid(unsafe_code)]
 
+mod assemble;
 mod lexer;
 
 use std::fmt;
-
-use lexer::{Kind, Token, lex, needs_separator};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Error {
@@ -21,30 +20,32 @@ impl fmt::Display for Error {
 
 impl std::error::Error for Error {}
 
+#[derive(Debug, Clone, Copy)]
+pub struct Options {
+    pub remove_comments: bool,
+    pub remove_whitespace: bool,
+    pub keep_newlines: bool,
+}
+
+impl Default for Options {
+    fn default() -> Self {
+        Self {
+            remove_comments: true,
+            remove_whitespace: true,
+            keep_newlines: false,
+        }
+    }
+}
+
+/// Minify while preserving the requested trivia. Retained newline bytes are
+/// copied exactly; `keep_newlines` does not infer statement boundaries.
+pub fn minify_with_options(source: &[u8], options: Options) -> Result<Vec<u8>, Error> {
+    let tokens = lexer::lex(source)?;
+    Ok(assemble::assemble(&tokens, source.len(), options))
+}
+
 /// Strip comments and unnecessary whitespace without rewriting literal bytes.
 /// This checks lexical completeness, not the full Lua or Luau grammar.
 pub fn minify(source: &[u8]) -> Result<Vec<u8>, Error> {
-    let tokens = lex(source)?;
-    let mut output = Vec::with_capacity(source.len());
-    let mut previous: Option<Token<'_>> = None;
-    for token in tokens {
-        match token.kind {
-            Kind::Space | Kind::Comment => continue,
-            Kind::Shebang => {
-                output.extend_from_slice(token.text);
-                output.push(b'\n');
-                continue;
-            }
-            _ => {}
-        }
-        if previous.is_some_and(|a| needs_separator(a, token)) {
-            output.push(b' ');
-        }
-        output.extend_from_slice(token.text);
-        previous = Some(token);
-    }
-    if !output.ends_with(b"\n") {
-        output.push(b'\n');
-    }
-    Ok(output)
+    minify_with_options(source, Options::default())
 }

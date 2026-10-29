@@ -17,6 +17,9 @@ Options:
       --stdout           Write results to stdout instead of files
   -f, --overwrite        Replace existing outputs
   -q, --quiet            Suppress file statistics
+      --no-comments      Keep comments
+      --no-whitespace    Keep original whitespace
+      --keep-newlines    Keep newline bytes while removing spaces
       --no-banner        Accepted for compatibility; no banner is printed
   -h, --help             Print help
   -v, --version          Print version
@@ -24,6 +27,7 @@ Options:
 ";
 
 pub struct Config {
+    pub minify: miniluar::Options,
     pub inputs: Vec<PathBuf>,
     pub output: Option<PathBuf>,
     pub output_dir: Option<PathBuf>,
@@ -38,6 +42,7 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Self {
         Self {
+            minify: miniluar::Options::default(),
             inputs: Vec::new(),
             output: None,
             output_dir: None,
@@ -76,6 +81,9 @@ pub fn parse(args: impl Iterator<Item = OsString>) -> Result<Action, String> {
             Some("-i" | "--in-place") => config.in_place = true,
             Some("-r" | "--recursive") => config.recursive = true,
             Some("--no-banner") => {}
+            Some("--no-comments") => config.minify.remove_comments = false,
+            Some("--no-whitespace") => config.minify.remove_whitespace = false,
+            Some("--keep-newlines") => config.minify.keep_newlines = true,
             Some("-o" | "--output" | "-d" | "--output-dir" | "--suffix") => {
                 let value = args
                     .next()

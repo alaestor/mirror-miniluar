@@ -50,3 +50,26 @@ fn removing_a_required_separator_changes_execution() {
     assert!(!broken.status.success());
     assert!(broken.stdout.is_empty());
 }
+
+#[test]
+fn retained_comments_and_whitespace_preserve_known_execution_results() {
+    use miniluar::{Options, minify_with_options};
+    for (source, expected) in [
+        (b"print(1 - --[[comment]] 2)".as_slice(), b"-1\n".as_slice()),
+        (b"print(1 - -- comment\n 2)", b"-1\n"),
+        (b"print(1 - --[=[comment]=] -2)", b"3\n"),
+        (b"print(1 + --[[comment]] 2)", b"3\n"),
+    ] {
+        for remove_whitespace in [false, true] {
+            let options = Options {
+                remove_comments: false,
+                remove_whitespace,
+                ..Options::default()
+            };
+            let program = minify_with_options(source, options).unwrap();
+            let output = execute(&program);
+            assert!(output.status.success(), "{program:?}: {:?}", output.stderr);
+            assert_eq!(output.stdout, expected);
+        }
+    }
+}
