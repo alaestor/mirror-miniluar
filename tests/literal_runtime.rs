@@ -150,6 +150,18 @@ fn generated_long_strings_cannot_close_inside_the_final_content_bytes() {
 }
 
 #[test]
+fn generated_long_strings_with_opening_brackets_execute_on_every_runtime() {
+    let source = br#"local s="[[a\nb\nc\nd\ne\nf\ng\nh";print(s)"#;
+    let expected = b"[[a\nb\nc\nd\ne\nf\ng\nh\n";
+    let output = minify(source).unwrap();
+    assert!(output.len() < source.len());
+    for runtime in runtime::all() {
+        assert_eq!(runtime.stdout(source), expected);
+        assert_eq!(runtime.stdout(&output), expected);
+    }
+}
+
+#[test]
 fn portable_string_shortening_preserves_all_bytes_and_decimal_escape_boundaries() {
     let mut bytes: Vec<u8> = (0..=255).collect();
     for control in 0..=31 {

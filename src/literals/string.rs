@@ -101,7 +101,8 @@ fn encode_long(bytes: &[u8]) -> Option<Vec<u8>> {
     if bytes.contains(&b'\r') || bytes.contains(&0) {
         return None;
     }
-    let mut level = 0;
+    // Lua 5.1 rejects nested [[ openers inside level-zero long strings.
+    let mut level = usize::from(bytes.windows(2).any(|window| window == b"[["));
     let closing = loop {
         let closing = format!("]{}]", "=".repeat(level));
         if !bytes
