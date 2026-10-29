@@ -158,3 +158,71 @@ fn renaming_is_opt_in_and_parse_failure_never_replaces_an_existing_output() {
     assert!(!result.status.success());
     assert!(result.stdout.is_empty());
 }
+
+#[cfg(unix)]
+#[test]
+fn new_file_outputs_are_private() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let dir = Sandbox::new();
+    success(&dir.run(&["--output", "out.lua", "--quiet"], b"print ( 1 )"));
+    assert_eq!(fs::read(dir.path("out.lua")).unwrap(), b"print(1)\n");
+    assert_eq!(
+        fs::metadata(dir.path("out.lua"))
+            .unwrap()
+            .permissions()
+            .mode()
+            & 0o077,
+        0
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn interrupted_writes_never_leave_readable_private_source() {
+    use std::os::unix::fs::PermissionsExt;
+    use std::process::Command;
+
+    let dir = Sandbox::new();
+    let source = format!("return \"{}\"", "private-value".repeat(8192));
+    let input = dir.path("private.lua");
+    fs::write(&input, &source).unwrap();
+    fs::set_permissions(&input, fs::Permissions::from_mode(0o600)).unwrap();
+
+    // SIGXFSZ stops the writer during staging, before it can restore the mode
+    // or remove the temporary file. A permissive umask exposes unsafe creation.
+    let result = Command::new("sh")
+        .args([
+            "-c",
+            "umask 000; ulimit -c 0; ulimit -f 1; exec \"$@\"",
+            "sh",
+        ])
+        .arg(env!("CARGO_BIN_EXE_minilua"))
+        .args(["--in-place", "--no-strings", "--quiet", "private.lua"])
+        .current_dir(&dir.0)
+        .output()
+        .unwrap();
+    assert!(!result.status.success());
+    assert_eq!(fs::read(&input).unwrap(), source.as_bytes());
+    let staged = fs::read_dir(&dir.0)
+        .unwrap()
+        .map(|entry| entry.unwrap().path())
+        .filter(|path| {
+            path.file_name()
+                .unwrap()
+                .as_encoded_bytes()
+                .starts_with(b".miniluar-")
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(
+        staged.len(),
+        1,
+        "the writer must have been interrupted during staging"
+    );
+    assert!(fs::metadata(&staged[0]).unwrap().len() > 0);
+    assert_eq!(
+        fs::metadata(&staged[0]).unwrap().permissions().mode() & 0o077,
+        0,
+        "staged source must never be accessible to other users"
+    );
+}

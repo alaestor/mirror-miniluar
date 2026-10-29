@@ -7,6 +7,7 @@ Minify Lua or Luau source. With no input, read stdin and write stdout.
 Files default to siblings named <stem>.min.lua. Portable literals are shortened.
 Globs are expanded by your shell, not by minilua. Directory results are sorted.
 Directory symlinks are not traversed during recursive discovery.
+New Unix output files are private to their owner.
 
 Options:
   -o, --output FILE      Write one source to FILE

@@ -26,7 +26,16 @@ pub fn write(path: &Path, bytes: &[u8], overwrite: bool) -> io::Result<()> {
                 std::process::id(),
                 NEXT.fetch_add(1, Ordering::Relaxed)
             ));
-            match OpenOptions::new().write(true).create_new(true).open(&temp) {
+            let mut options = OpenOptions::new();
+            options.write(true).create_new(true);
+            // Set the mode at creation, before source bytes or a readable file
+            // descriptor can escape. New outputs deliberately remain private.
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::OpenOptionsExt;
+                options.mode(0o600);
+            }
+            match options.open(&temp) {
                 Ok(file) => Some(Ok((Temporary(temp), file))),
                 Err(e) if e.kind() == io::ErrorKind::AlreadyExists => None,
                 Err(e) => Some(Err(e)),
