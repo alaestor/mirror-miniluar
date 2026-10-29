@@ -20,9 +20,10 @@ options. For a quick smoke test:
 printf 'print ( 42 ) -- comment\n' | cargo run --quiet -- -
 ```
 
-The minifier handles bytes, not UTF-8 text. Keep literal spelling intact until a
-transformation has runtime tests for the supported dialects. Lexical errors fail
-before output is written; a successful minification is not syntax validation.
+The minifier handles bytes, not UTF-8 text. Literal transformations need runtime
+tests for every supported dialect. Use `--no-strings --no-numbers` when exact
+literal spelling matters. Lexical errors fail before output is written; a
+successful minification is not syntax validation.
 The crate forbids unsafe code and has no third-party Rust dependencies.
 
 Take the first item in `.agents/TODO.md` and delete it when finished. The Python

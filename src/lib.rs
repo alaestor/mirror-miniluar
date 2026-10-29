@@ -2,6 +2,7 @@
 
 mod assemble;
 mod lexer;
+mod literals;
 
 use std::fmt;
 
@@ -25,6 +26,8 @@ pub struct Options {
     pub remove_comments: bool,
     pub remove_whitespace: bool,
     pub keep_newlines: bool,
+    pub minify_strings: bool,
+    pub minify_numbers: bool,
 }
 
 impl Default for Options {
@@ -33,6 +36,8 @@ impl Default for Options {
             remove_comments: true,
             remove_whitespace: true,
             keep_newlines: false,
+            minify_strings: true,
+            minify_numbers: true,
         }
     }
 }
@@ -40,11 +45,12 @@ impl Default for Options {
 /// Minify while preserving the requested trivia. Retained newline bytes are
 /// copied exactly; `keep_newlines` does not infer statement boundaries.
 pub fn minify_with_options(source: &[u8], options: Options) -> Result<Vec<u8>, Error> {
-    let tokens = lexer::lex(source)?;
+    let mut tokens = lexer::lex(source)?;
+    literals::shorten(&mut tokens, options);
     Ok(assemble::assemble(&tokens, source.len(), options))
 }
 
-/// Strip comments and unnecessary whitespace without rewriting literal bytes.
+/// Strip comments and unnecessary whitespace and conservatively shorten literals.
 /// This checks lexical completeness, not the full Lua or Luau grammar.
 pub fn minify(source: &[u8]) -> Result<Vec<u8>, Error> {
     minify_with_options(source, Options::default())

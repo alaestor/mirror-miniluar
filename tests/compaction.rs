@@ -1,4 +1,4 @@
-use miniluar::minify;
+use miniluar::{Options, minify, minify_with_options};
 
 #[test]
 fn removes_trivia_but_keeps_required_word_boundaries() {
@@ -15,6 +15,11 @@ fn unambiguous_punctuation_does_not_keep_unnecessary_spaces() {
 
 #[test]
 fn removal_cannot_create_comments_compound_operators_or_long_brackets() {
+    let options = Options {
+        minify_strings: false,
+        minify_numbers: false,
+        ..Options::default()
+    };
     for (source, expected) in [
         ("x - -- comment\n - y", "x- -y\n"),
         ("local x <const> = 1", "local x<const> =1\n"),
@@ -25,7 +30,7 @@ fn removal_cannot_create_comments_compound_operators_or_long_brackets() {
         ("return 1. and true", "return 1. and true\n"),
     ] {
         assert_eq!(
-            minify(source.as_bytes()).unwrap(),
+            minify_with_options(source.as_bytes(), options).unwrap(),
             expected.as_bytes(),
             "{source}"
         );
@@ -33,10 +38,15 @@ fn removal_cannot_create_comments_compound_operators_or_long_brackets() {
 }
 
 #[test]
-fn literal_bytes_and_spelling_are_untouched() {
+fn disabled_literal_transforms_keep_bytes_and_spelling() {
+    let options = Options {
+        minify_strings: false,
+        minify_numbers: false,
+        ..Options::default()
+    };
     let source = b"local s = '\xff\\255' ; local n = 0x1.fp+3 ; return [==[a\r\n--b ]=] c]==]";
     assert_eq!(
-        minify(source).unwrap(),
+        minify_with_options(source, options).unwrap(),
         b"local s='\xff\\255';local n=0x1.fp+3;return[==[a\r\n--b ]=] c]==]\n"
     );
 }

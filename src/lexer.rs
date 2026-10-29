@@ -1,5 +1,6 @@
 //! Byte ranges borrow source unchanged, including non-UTF-8 literal bytes.
 use crate::Error;
+use std::borrow::Cow;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum Kind {
@@ -13,10 +14,10 @@ pub(crate) enum Kind {
     Shebang,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub(crate) struct Token<'a> {
     pub kind: Kind,
-    pub text: &'a [u8],
+    pub text: Cow<'a, [u8]>,
 }
 
 const OPERATORS: &[&[u8]] = &[
@@ -115,7 +116,7 @@ impl<'a> Lexer<'a> {
         };
         Ok(Token {
             kind,
-            text: &self.source[start..self.pos],
+            text: Cow::Borrowed(&self.source[start..self.pos]),
         })
     }
 
@@ -193,7 +194,7 @@ impl<'a> Lexer<'a> {
                     while braces > 0 && self.pos < self.source.len() {
                         let token = self.next(depth)?;
                         if token.kind == Kind::Operator {
-                            match token.text {
+                            match token.text.as_ref() {
                                 b"{" => braces += 1,
                                 b"}" => braces -= 1,
                                 _ => {}
@@ -250,7 +251,7 @@ impl<'a> Lexer<'a> {
     }
 }
 
-pub(crate) fn needs_separator(a: Token<'_>, b: Token<'_>) -> bool {
+pub(crate) fn needs_separator(a: &Token<'_>, b: &Token<'_>) -> bool {
     let last = *a.text.last().expect("nonempty token");
     let first = b.text[0];
     (word(last) && word(first))

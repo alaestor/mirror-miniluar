@@ -7,9 +7,9 @@ pub(crate) fn assemble(tokens: &[Token<'_>], capacity: usize, options: Options) 
         previous: None,
         line_comment: false,
     };
-    for &token in tokens {
+    for token in tokens {
         match token.kind {
-            Kind::Space => assembler.whitespace(token.text, options),
+            Kind::Space => assembler.whitespace(&token.text, options),
             Kind::LineComment | Kind::LongComment if options.remove_comments => {}
             _ => assembler.token(token),
         }
@@ -24,13 +24,13 @@ pub(crate) fn assemble(tokens: &[Token<'_>], capacity: usize, options: Options) 
     assembler.output
 }
 
-struct Assembler<'a> {
+struct Assembler<'a, 'source> {
     output: Vec<u8>,
-    previous: Option<Token<'a>>,
+    previous: Option<&'a Token<'source>>,
     line_comment: bool,
 }
 
-impl<'a> Assembler<'a> {
+impl<'a, 'source> Assembler<'a, 'source> {
     fn whitespace(&mut self, text: &[u8], options: Options) {
         let start = self.output.len();
         if !options.remove_whitespace {
@@ -48,7 +48,7 @@ impl<'a> Assembler<'a> {
         }
     }
 
-    fn token(&mut self, token: Token<'a>) {
+    fn token(&mut self, token: &'a Token<'source>) {
         if self.line_comment {
             self.output.push(b'\n');
         }
@@ -58,7 +58,7 @@ impl<'a> Assembler<'a> {
         {
             self.output.push(b' ');
         }
-        self.output.extend_from_slice(token.text);
+        self.output.extend_from_slice(&token.text);
         self.line_comment = matches!(token.kind, Kind::LineComment | Kind::Shebang);
         // A comment is itself a separator. Keeping it as `previous` would
         // impose spurious boundaries based on the comment's last byte.

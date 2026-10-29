@@ -131,3 +131,20 @@ fn luau_binary_literals_numeric_separators_and_interpolation_execute() {
         );
     }
 }
+
+#[test]
+fn generated_long_strings_cannot_close_inside_the_final_content_bytes() {
+    for runtime in runtime::all() {
+        for ending in ["]", "]=", "]]", "]=]", "]==", "\\n"] {
+            let source = format!(
+                r#"local s="a\nb\nc\nd\ne\nf{ending}";print(#s);for i=1,#s do print(string.byte(s,i)) end"#
+            );
+            assert_eq!(
+                runtime.stdout(&minify(source.as_bytes()).unwrap()),
+                runtime.stdout(source.as_bytes()),
+                "{}: {ending:?}",
+                runtime.name
+            );
+        }
+    }
+}

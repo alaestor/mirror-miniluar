@@ -4,7 +4,7 @@ use std::path::PathBuf;
 pub const HELP: &str = "Usage: minilua [OPTIONS] [FILE|DIR ...|-]
 
 Minify Lua or Luau source. With no input, read stdin and write stdout.
-Files default to siblings named <stem>.min.lua. Literal spelling is preserved.
+Files default to siblings named <stem>.min.lua. Portable literals are shortened.
 Globs are expanded by your shell, not by minilua. Directory results are sorted.
 Directory symlinks are not traversed during recursive discovery.
 
@@ -20,6 +20,8 @@ Options:
       --no-comments      Keep comments
       --no-whitespace    Keep original whitespace
       --keep-newlines    Keep newline bytes while removing spaces
+      --no-strings       Keep string literal spelling
+      --no-numbers       Keep number literal spelling
       --no-banner        Accepted for compatibility; no banner is printed
   -h, --help             Print help
   -v, --version          Print version
@@ -84,6 +86,8 @@ pub fn parse(args: impl Iterator<Item = OsString>) -> Result<Action, String> {
             Some("--no-comments") => config.minify.remove_comments = false,
             Some("--no-whitespace") => config.minify.remove_whitespace = false,
             Some("--keep-newlines") => config.minify.keep_newlines = true,
+            Some("--no-strings") => config.minify.minify_strings = false,
+            Some("--no-numbers") => config.minify.minify_numbers = false,
             Some("-o" | "--output" | "-d" | "--output-dir" | "--suffix") => {
                 let value = args
                     .next()
