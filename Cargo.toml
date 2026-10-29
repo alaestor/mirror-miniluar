@@ -1,0 +1,13 @@
+[package]
+name = "miniluar"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+description = "A byte-preserving Lua and Luau source minifier"
+
+[[bin]]
+name = "minilua"
+path = "src/main.rs"
+
+[lints.rust]
+unsafe_code = "forbid"

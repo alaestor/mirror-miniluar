@@ -3,7 +3,6 @@ This list is a stack. Items are taken from the top and deleted upon completion.
 TODO
 ---
 
-- Implement a byte-oriented Lua/Luau lexer and conservative whitespace/comment compaction. Preserve literal spelling and shebangs; reject unfinished literals. Test token-boundary hazards and raw bytes before adding transformations.
 - Implement stdin and single-file CLI modes, explicit output, default sibling output, and overwrite protection. Test through the executable, including errors and stream separation.
 - Add deterministic directory/batch discovery, recursive mode, output directories, and collision preflight. Reject destinations that alias other inputs, including filesystem aliases. Decide whether shell-expanded globs suffice rather than adding a glob dependency.
 - Add comment/whitespace preservation and newline options with regression tests from ../fork-MiniLua/tests. Preserve line-comment terminators when whitespace is removed.
