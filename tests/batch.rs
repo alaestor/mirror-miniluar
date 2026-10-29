@@ -224,3 +224,23 @@ fn in_place_replacement_retains_executable_permissions() {
         0o751
     );
 }
+
+#[cfg(unix)]
+#[test]
+fn parent_directory_aliases_cannot_hide_input_collisions() {
+    let dir = Sandbox::new();
+    fs::create_dir(dir.path("real")).unwrap();
+    std::os::unix::fs::symlink("real", dir.path("alias")).unwrap();
+    let original = b"print ( 7 )";
+    fs::write(dir.path("real/input.lua"), original).unwrap();
+    for output in ["alias/input.lua", "real/missing/../input.lua"] {
+        let result = dir.run(&["real/input.lua", "-o", output, "-f"], b"");
+        assert!(!result.status.success());
+        assert!(String::from_utf8_lossy(&result.stderr).contains("collision"));
+        assert_eq!(fs::read(dir.path("real/input.lua")).unwrap(), original);
+        assert!(!dir.path("real/missing").exists());
+    }
+    success(&dir.run(&["real/input.lua", "-o", "alias/new.lua", "-q"], b""));
+    assert_eq!(fs::read(dir.path("real/new.lua")).unwrap(), b"print(7)\n");
+    assert_eq!(fs::read(dir.path("real/input.lua")).unwrap(), original);
+}

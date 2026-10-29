@@ -148,3 +148,26 @@ fn generated_long_strings_cannot_close_inside_the_final_content_bytes() {
         }
     }
 }
+
+#[test]
+fn portable_string_shortening_preserves_all_bytes_and_decimal_escape_boundaries() {
+    let mut bytes: Vec<u8> = (0..=255).collect();
+    for control in 0..=31 {
+        bytes.extend([control, b'9']);
+    }
+    let mut source = String::from("local value=\"");
+    for byte in &bytes {
+        source.push_str(&format!("\\{byte:03}"));
+    }
+    source.push_str("\";print(#value);for i=1,#value do print(value:byte(i)) end");
+    let mut expected = format!("{}\n", bytes.len());
+    for byte in bytes {
+        expected.push_str(&format!("{byte}\n"));
+    }
+    let output = minify(source.as_bytes()).unwrap();
+    assert!(output.len() < source.len());
+    for runtime in runtime::all() {
+        assert_eq!(runtime.stdout(source.as_bytes()), expected.as_bytes());
+        assert_eq!(runtime.stdout(&output), expected.as_bytes());
+    }
+}

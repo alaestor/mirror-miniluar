@@ -112,3 +112,34 @@ fn empty_and_comment_only_inputs_have_one_final_newline() {
         assert_eq!(minify(source).unwrap(), b"\n");
     }
 }
+
+#[test]
+fn only_an_unescaped_z_can_consume_physical_whitespace_in_a_string() {
+    assert!(minify(b"return 'a\\z \t\r\n b'").is_ok());
+    assert!(minify(b"return 'a\\\\z \t\r\n b'").is_err());
+    assert!(minify(b"return 'a\\z \tX\r\n b'").is_err());
+    for ending in [b"\r".as_slice(), b"\n", b"\r\n", b"\n\r"] {
+        let mut source = b"return 'a\\".to_vec();
+        source.extend(ending);
+        source.extend(b"b'");
+        assert!(minify(&source).is_ok());
+        source.remove(9);
+        assert!(minify(&source).is_err());
+    }
+}
+
+#[test]
+fn recursive_interpolation_is_bounded_but_ordinary_nesting_is_accepted() {
+    for depth in [16, 256] {
+        let source = format!("{}1{}", "`{".repeat(depth), "}`".repeat(depth));
+        let result = minify(source.as_bytes());
+        if depth == 16 {
+            assert_eq!(result.unwrap(), format!("{source}\n").as_bytes());
+        } else {
+            assert_eq!(
+                result.unwrap_err().message,
+                "interpolation nesting limit exceeded"
+            );
+        }
+    }
+}
