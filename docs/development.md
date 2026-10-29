@@ -28,6 +28,13 @@ Local renaming is opt-in (`--rename-locals`). Its binding parser supports untype
 Lua/Luau; types, casts, if-expressions, and backtick strings fail before output.
 Names inspected through debugging or dynamically loaded code cannot be inferred;
 leave renaming disabled, or use the library's `preserve_names` option.
+
+Unix staging starts private to its owner, and new outputs stay private. Replacing
+an existing file preserves its owner, group, and permission bits, and fails before
+publication if these cannot be restored. Atomic replacement creates a new inode;
+ACLs, extended attributes, and timestamps are not copied. Use stdout with a
+metadata-preserving writer when those attributes matter.
+
 The crate forbids unsafe code and has no third-party Rust dependencies.
 
 Take the first item in `.agents/TODO.md` and delete it when finished. The Python

@@ -244,3 +244,54 @@ fn parent_directory_aliases_cannot_hide_input_collisions() {
     assert_eq!(fs::read(dir.path("real/new.lua")).unwrap(), b"print(7)\n");
     assert_eq!(fs::read(dir.path("real/input.lua")).unwrap(), original);
 }
+
+#[cfg(unix)]
+#[test]
+fn replacements_preserve_the_destinations_owner_group_and_mode() {
+    use std::os::unix::fs::{MetadataExt, PermissionsExt, chown};
+    use std::process::Command;
+
+    let groups = Command::new("id").arg("-G").output().unwrap();
+    success(&groups);
+    let groups = String::from_utf8(groups.stdout).unwrap();
+    let dir = Sandbox::new();
+    // Exercise every available group, including supplementary groups when the
+    // test account has them. Restricted build users may have only one group.
+    for group in groups
+        .split_whitespace()
+        .map(|gid| gid.parse::<u32>().unwrap())
+    {
+        for in_place in [false, true] {
+            source(&dir, "input.lua", 42);
+            source(&dir, "existing.lua", 7);
+            let destination = if in_place {
+                "input.lua"
+            } else {
+                "existing.lua"
+            };
+            let path = dir.path(destination);
+            chown(&path, None, Some(group)).unwrap();
+            fs::set_permissions(&path, fs::Permissions::from_mode(0o640)).unwrap();
+            let before = fs::metadata(&path).unwrap();
+
+            let args = if in_place {
+                vec!["input.lua", "--in-place", "--quiet"]
+            } else {
+                vec![
+                    "input.lua",
+                    "--output",
+                    "existing.lua",
+                    "--overwrite",
+                    "--quiet",
+                ]
+            };
+            success(&dir.run(&args, b""));
+
+            let after = fs::metadata(&path).unwrap();
+            assert_eq!(fs::read(&path).unwrap(), b"print(42)\n");
+            assert_eq!(after.uid(), before.uid());
+            assert_eq!(after.gid(), before.gid(), "replacement changed its readers");
+            assert_eq!(after.mode() & 0o7777, before.mode() & 0o7777);
+        }
+    }
+}
